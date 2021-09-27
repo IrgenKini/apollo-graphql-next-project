@@ -1,12 +1,37 @@
 import { gql } from "@apollo/client";
 import client from "../../../apollo-client";
 
+interface JobInput {
+  jobInput: {
+    jobSlug: String;
+    companySlug: String;
+  };
+}
+
+interface JobOutput {
+  job: {
+    id: string;
+    locationNames: string;
+    slug: string;
+    title: string;
+    description: string;
+    company: {
+      title: string;
+    };
+  };
+}
+
 const Job = ({ job }) => {
   return (
     <div>
       <h1>{job.title}</h1>
       <h2>From {job.company.name}</h2>
-      {job.description}
+      <h2>
+        Location: {job.locationNames !== null ? job.locationNames : "Remote"}
+      </h2>
+      <div style={{ maxHeight: "200px", overflow: "scroll" }}>
+        {job.description}
+      </div>
     </div>
   );
 };
@@ -41,54 +66,32 @@ export async function getStaticPaths() {
 }
 
 export async function getStaticProps(context) {
-  // const input = JSON.stringify({
-  //   jobInput: {
-  //     jobSlug: "senior-fullstack-engineer-platform",
-  //     companySlug: "segment",
-  //   },
-  // });
-  // const { data } = await client.query({
-  //   query: gql`
-  //     query Job($jobInpput: ${input}){
-  //       job(input: $jobInpput ) {
-  //         id
-  //         description
-  //         locationNames
-  //         slug
-  //         title
-  //       }
-  //     }
-  //   `,
-  // });
-
-  const { data } = await client.query({
+  const { data } = await client.query<JobOutput, JobInput>({
     query: gql`
-      query Jobs {
-        jobs {
+      query Job($jobInput: JobInput!) {
+        job(input: $jobInput) {
           id
-          title
-          slug
           description
+          locationNames
+          slug
+          title
           company {
-            id
             name
-            slug
-            websiteUrl
           }
         }
       }
     `,
+    variables: {
+      jobInput: {
+        jobSlug: context.params.jobSlug,
+        companySlug: context.params.companySlug,
+      },
+    },
   });
-
-  const requiredJob = data.jobs.find(
-    (job) =>
-      job.slug === context.params.jobSlug &&
-      job.company.slug === context.params.companySlug
-  );
 
   return {
     props: {
-      job: requiredJob,
+      job: data.job,
     },
   };
 }

@@ -1,5 +1,7 @@
-import { gql } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import client from "../../../apollo-client";
+import { getAllJobs, getJob, mutateJob } from "../../../queries/queries";
+import React from "react";
 
 interface JobInput {
   jobInput: {
@@ -18,41 +20,68 @@ interface JobOutput {
     company: {
       title: string;
     };
+    commitment: {
+      id: string;
+    };
   };
 }
 
 const Job = ({ job }) => {
+  const [createNewJob, { data, loading, error }] = useMutation(mutateJob);
+  const [mutatedJob, setMutatedJob] = React.useState<any>(job);
+
+  if (loading) return "Submitting...";
+  if (error) return `Submission error! ${error.message}`;
+
   return (
     <div>
-      <h1>{job.title}</h1>
-      <h2>From {job.company.name}</h2>
-      <h2>
-        Location: {job.locationNames !== null ? job.locationNames : "Remote"}
-      </h2>
-      <div style={{ maxHeight: "200px", overflow: "scroll" }}>
-        {job.description}
+      <h1>{mutatedJob?.title}</h1>
+      <div>
+        From:{" "}
+        {mutatedJob.company ? (
+          mutatedJob?.company?.name
+        ) : (
+          <i>Company not specified </i>
+        )}
       </div>
+      <div>
+        Location:{" "}
+        {mutatedJob?.locationNames !== null && mutatedJob.locationNames !== ""
+          ? mutatedJob?.locationNames
+          : "Remote"}
+      </div>
+      <div style={{ maxHeight: "200px", overflow: "scroll" }}>
+        {mutatedJob?.description}
+      </div>
+      <button
+        onClick={() =>
+          createNewJob({
+            variables: {
+              postJobInput: {
+                title: "software developer",
+                commitmentId: job.commitment.id,
+                //companyName: job.company.name,
+                companyName: "irgens",
+                locationNames: "New York",
+                userEmail: "irakini1@gmail.com",
+                description: "Here goes the description",
+                applyUrl: "url.com",
+              },
+            },
+          }).then((data: any) => {
+            setMutatedJob(data.data.postJob);
+          })
+        }
+      >
+        Add New
+      </button>
     </div>
   );
 };
 
 export async function getStaticPaths() {
   const { data } = await client.query({
-    query: gql`
-      query Jobs {
-        jobs {
-          id
-          title
-          slug
-          company {
-            id
-            name
-            slug
-            websiteUrl
-          }
-        }
-      }
-    `,
+    query: getAllJobs,
   });
 
   const jobs = data.jobs.slice(0, 15);
@@ -61,26 +90,13 @@ export async function getStaticPaths() {
     paths: jobs.map((job) => ({
       params: { jobSlug: job.slug, companySlug: job.company.slug },
     })),
-    fallback: false,
+    fallback: true,
   };
 }
 
 export async function getStaticProps(context) {
   const { data } = await client.query<JobOutput, JobInput>({
-    query: gql`
-      query Job($jobInput: JobInput!) {
-        job(input: $jobInput) {
-          id
-          description
-          locationNames
-          slug
-          title
-          company {
-            name
-          }
-        }
-      }
-    `,
+    query: getJob,
     variables: {
       jobInput: {
         jobSlug: context.params.jobSlug,

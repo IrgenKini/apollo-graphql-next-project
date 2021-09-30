@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import client from "../../apollo-client";
 import styles from "../../styles/Home.module.css";
+import { getAllJobs } from "../../queries/queries";
 import Link from "next/link";
 import React from "react";
 
@@ -21,21 +22,7 @@ const Jobs = ({ jobs }) => {
 
 export async function getStaticProps() {
   const { data } = await client.query({
-    query: gql`
-      query Jobs {
-        jobs {
-          id
-          title
-          slug
-          company {
-            id
-            name
-            slug
-            websiteUrl
-          }
-        }
-      }
-    `,
+    query: getAllJobs,
   });
 
   return {
